@@ -3,14 +3,14 @@ import json
 import os
 import re
 
-import discord
-from discord.ext import commands, tasks
+import disnake
+from disnake.ext import commands, tasks
 
 import utils
 from cogs.help import help
 
 """
-    DISCORD_CALMDOWN_ROLE - Die Rollen-ID der "Stille Treppe"-Rolle.
+    DISCORD_CALMDOWN_ROLE - Die Rollen-ID der "Calmdown"-Rolle.
     DISCORD_CALMDOWN_FILE - Datendatei. Wenn diese noch nicht existiert wird sie angelegt.
     DISCORD_DATE_TIME_FORMAT - Datumsformat für die interne Speicherung.
 """
@@ -44,9 +44,9 @@ class Calmdown(commands.Cog):
         try:
             user = await guild.fetch_member(int(user_id))
             if inform_user:
-                await utils.send_dm(user, f"Du darfst die **stille Treppe** nun wieder verlassen.")
+                await utils.send_dm(user, f"Die Calmdown-Rolle wurde nun wieder entfernt.")
             await user.remove_roles(role)
-        except discord.errors.NotFound:
+        except disnake.errors.NotFound:
             pass
 
         if self.silenced_users.get(str(user_id)):
@@ -66,18 +66,18 @@ class Calmdown(commands.Cog):
                 await self.unsilence(user_id, data['guild_id'], inform_user=True)
 
     @help(
-        brief="Setzt einen User auf die stille Treppe.",
+        brief="Weist einem User die Calmdown-Rolle zu.",
         example="!calmdown @user 1d",
         parameters={
-            "user": "Mention des Users der eine Auszeit benötigt",
+            "user": "Mention des Users, der eine Auszeit benötigt",
             "duration": "Länge der Auszeit (24h für 24 Stunden 7d für 7 Tage oder 10m oder 10 für 10 Minuten. 0 hebt die Sperre auf).",
         },
-        description="In der Zeit auf der stillen Treppe darf der User noch alle Kanäle lesen. Das Schreiben ist für ihn allerdings bis zum Ablauf der Zeit gesperrt.",
+        description="In der Auszeit darf das Servermitglied noch alle Kanäle lesen. Das Schreiben und Sprechen ist für ihn oder sie allerdings bis zum Ablauf der Zeit gesperrt.",
         mod=True
     )
     @commands.command(name="calmdown", aliases=["auszeit", "mute"])
     @commands.check(utils.is_mod)
-    async def cmd_calmdown(self, ctx, user: discord.Member, duration):
+    async def cmd_calmdown(self, ctx, user: disnake.Member, duration):
         if re.match(r"^[0-9]+$", duration):
             duration = f"{duration}m"
         if not utils.is_valid_time(duration):
@@ -91,7 +91,7 @@ class Calmdown(commands.Cog):
                 return
             duration = utils.to_minutes(duration)
             if duration == 0:
-                await ctx.channel.send(f"{ctx.author.mention} hat {user.mention} von der **stillen Treppe** geholt.")
+                await ctx.channel.send(f"{ctx.author.mention} hat {user.mention} aus der **Auszeit** geholt.")
                 await self.unsilence(user.id, guild.id, inform_user=False)
                 return
 
@@ -99,9 +99,9 @@ class Calmdown(commands.Cog):
             till = now + datetime.timedelta(minutes=duration)
             self.silenced_users[str(user.id)] = {"duration": till.strftime(self.fmt), "guild_id": guild.id}
             self.save()
-            await ctx.channel.send(f"{ctx.author.mention} hat {user.mention} auf die **stille Treppe** geschickt.")
+            await ctx.channel.send(f"{ctx.author.mention} hat an {user.mention} die **Calmdown-Rolle** vergeben.")
             await user.add_roles(role)
             if duration < 300:
-                await utils.send_dm(user, f"Du wurdest für {duration} Minuten auf die **stille Treppe** verbannt. Du kannst weiterhin alle Kanäle lesen, aber erst nach Ablauf der Zeit wieder an Gesprächen teilnehmen.")
+                await utils.send_dm(user, f"Dir wurde für {duration} Minuten die **Calmdown-Rolle** zugewiesen. Du kannst weiterhin alle Kanäle lesen, aber erst nach Ablauf der Zeit wieder an Gesprächen teilnehmen.")
             else:
-                await utils.send_dm(user, f"Du wurdest bis {till.strftime(self.fmt)} Uhr auf die **stille Treppe** verbannt. Du kannst weiterhin alle Kanäle lesen, aber erst nach Ablauf der Zeit wieder an Gesprächen teilnehmen.")
+                await utils.send_dm(user, f"Bis {till.strftime(self.fmt)} Uhr trägst du die Calmdown-Rolle. Du kannst weiterhin alle Kanäle lesen, aber erst nach Ablauf der Zeit wieder an Gesprächen teilnehmen.")

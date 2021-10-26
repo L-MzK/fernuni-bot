@@ -1,8 +1,8 @@
-from discord.ext import commands
+from disnake.ext import commands
 import inspect
 import utils
 import re
-import discord
+import disnake
 import collections
 
 data = {"category": {"__none__": {"title": "Sonstiges", "description": "Die Kategorie für die Kategorielosen."}}, "command": {}}
@@ -70,9 +70,11 @@ async def handle_error(ctx, error):
         # syntax = data[ctx.command.name]['syntax']
         # example = data[ctx.command.name]['example']
 
+        cmd_name = f"{ctx.command.parent} {ctx.command.name}" if ctx.command.parent else f"{ctx.command.name}"
+
         msg = (
-            f"Fehler! Du hast ein Argument vergessen. Für weitere Hilfe gib `!help {ctx.command.name}` ein. \n"
-         f"`Syntax: {data['command'][ctx.command.name]['syntax']}`\n"
+            f"Fehler! Du hast ein Argument vergessen. Für weitere Hilfe gib `!help {cmd_name}` ein. \n"
+            f"`Syntax: {data['command'][cmd_name]['syntax']}`\n"
         )
         await ctx.channel.send(msg)
     else:
@@ -154,7 +156,7 @@ class Help(commands.Cog):
                 text += f"**{command['syntax']}**\n"
                 text += f"{command['brief']}\n\n" if command['brief'] else "\n"
                 if (len(helptext) + len(text) > 2048):
-                    embed = discord.Embed(title=title,
+                    embed = disnake.Embed(title=title,
                                           description=helptext,
                                           color=19607)
                     await utils.send_dm(ctx.author, "", embed=embed)
@@ -164,7 +166,7 @@ class Help(commands.Cog):
                 helptext += text
                 text = ""
 
-        embed = discord.Embed(title=title,
+        embed = disnake.Embed(title=title,
                               description=helptext,
                               color=19607)
         await utils.send_dm(ctx.author, "", embed=embed)
@@ -173,7 +175,7 @@ class Help(commands.Cog):
         try:
             command = data['command'][name]
             if command['mod'] and not utils.is_mod(ctx):
-                raise KeyError
+                return #raise KeyError
         except KeyError:
             await ctx.channel.send(
                 "Fehler! Für dieses Kommando habe ich keinen Hilfe-Eintrag. Gib `!help` ein um eine Übersicht zu erhalten. ")
@@ -187,10 +189,15 @@ class Help(commands.Cog):
             text += f"`{param}` - {desc}\n"
         text += f"**Beispiel:**\n `{command['example']}`\n" if command['example'] else ""
         text += f"\n{command['description']}\n" if command['description'] else ""
-        embed = discord.Embed(title=title,
+        embed = disnake.Embed(title=title,
                               description=text,
                               color=19607)
+        text += "==========================\n"
         await utils.send_dm(ctx.author, text)  # , embed=embed)
+
+        for subname in data['command']:
+            if subname.startswith(f"{name} "):
+                await self.help_card(ctx, subname)
 
     @commands.command(name="debug-help")
     @commands.check(utils.is_mod)
@@ -218,7 +225,7 @@ class Help(commands.Cog):
                 text += f"\n{command['description']}\n" if command['description'] else ""
                 text += "=====================================================\n"
                 if (len(helptext) + len(text) > 2048):
-                    embed = discord.Embed(title=title,
+                    embed = disnake.Embed(title=title,
                                           description=helptext,
                                           color=19607)
                     await utils.send_dm(ctx.author, "", embed=embed)
@@ -228,7 +235,7 @@ class Help(commands.Cog):
                 helptext += text
                 text = ""
 
-        embed = discord.Embed(title=title,
+        embed = disnake.Embed(title=title,
                               description=helptext,
                               color=19607)
         await utils.send_dm(ctx.author, "", embed=embed)
