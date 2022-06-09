@@ -4,9 +4,9 @@ import disnake
 from disnake.ext import commands
 from dotenv import load_dotenv
 
-from cogs import appointments, calmdown, christmas, easter, github, help, learninggroups, links, \
-    news, polls, roles, support, text_commands, voice, welcome, xkcd, module_information
-# , timer
+from cogs import appointments, calmdown, github, help, learninggroups, links, timer, \
+    news, polls, roles, support, text_commands, voice, welcome, xkcd, module_information, job_offers
+from view_manager import ViewManager
 
 # .env file is necessary in the same directory, that contains several strings.
 load_dotenv()
@@ -16,35 +16,47 @@ ACTIVITY = os.getenv('DISCORD_ACTIVITY')
 OWNER = int(os.getenv('DISCORD_OWNER'))
 ROLES_FILE = os.getenv('DISCORD_ROLES_FILE')
 HELP_FILE = os.getenv('DISCORD_HELP_FILE')
-CATEGORY_LERNGRUPPEN = os.getenv("DISCORD_CATEGORY_LERNGRUPPEN")
+CATEGORY_LERNGRUPPEN = int(os.getenv("DISCORD_CATEGORY_LERNGRUPPEN"))
 PIN_EMOJI = "📌"
-
-intents = disnake.Intents.default()
-intents.members = True
 
 
 class Boty(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix='!', help_command=None, activity=disnake.Game(ACTIVITY), owner_id=OWNER,
-                         intents=intents)
+                         intents=disnake.Intents.all())
+        self.view_manager = ViewManager(self)
+        self.add_cogs()
+        self.persistent_views_added = False
+        # self.add_cog(elm_street.ElmStreet(self))
+
+    def is_prod(self):
+        return os.getenv("DISCORD_PROD") == "True"
+
+    async def on_ready(self):
+        self.view_manager.on_ready()
+        if not self.persistent_views_added:
+            if timer_cog := self.get_cog("Timer"):
+                self.add_view(timer_cog.get_view())
+        print("Client started!")
+
+    def add_cogs(self):
         self.add_cog(appointments.Appointments(self))
         self.add_cog(text_commands.TextCommands(self))
         self.add_cog(polls.Polls(self))
         self.add_cog(roles.Roles(self))
         self.add_cog(welcome.Welcome(self))
-        self.add_cog(christmas.Christmas(self))
         self.add_cog(support.Support(self))
         self.add_cog(news.News(self))
         self.add_cog(links.Links(self))
         self.add_cog(voice.Voice(self))
-        self.add_cog(easter.Easter(self))
         self.add_cog(learninggroups.LearningGroups(self))
         self.add_cog(module_information.ModuleInformation(self))
         self.add_cog(xkcd.Xkcd(self))
         self.add_cog(help.Help(self))
         self.add_cog(calmdown.Calmdown(self))
         self.add_cog(github.Github(self))
-        # self.add_cog(timer.Timer(self))
+        self.add_cog(timer.Timer(self))
+        self.add_cog(job_offers.Joboffers(self))
 
 
 bot = Boty()
@@ -81,9 +93,9 @@ async def unpin_message(message):
             await message.unpin()
 
 
-@bot.event
-async def on_ready():
-    print("Client started!")
+# @bot.event
+# async def on_ready():
+#     print("Client started!")
 
 
 @bot.event
